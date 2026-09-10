@@ -1,0 +1,14 @@
+{
+  "appId": "com.jingjing.readingroom",
+  "appName": "璟璟的共读小屋",
+  "webDir": "dist-native",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#eef0ec"
+  },
+  "server": { "androidScheme": "https", "cleartext": false },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true },
+    "StatusBar": { "style": "LIGHT", "backgroundColor": "#eef0ec" }
+  }
+}

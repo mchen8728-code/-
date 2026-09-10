@@ -1,0 +1,36 @@
+{
+  "name": "璟璟的共读小屋",
+  "short_name": "共读小屋",
+  "description": "带着砚猪一起阅读微信读书，并通过只读 MCP 与 ChatGPT 共读。",
+  "lang": "zh-CN",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#eef0ec",
+  "theme_color": "#eef0ec",
+  "prefer_related_applications": false,
+  "categories": ["books", "education", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

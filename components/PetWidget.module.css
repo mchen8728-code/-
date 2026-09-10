@@ -1,0 +1,204 @@
+.widget {
+  position: fixed;
+  z-index: 7;
+  right: 16px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: 96px;
+  height: 104px;
+  /* Keep layout isolation without paint containment: speech bubbles extend above the pet. */
+  contain: layout style;
+  pointer-events: none;
+  transition: transform 180ms ease-out;
+}
+
+.collapseControl {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(111, 72, 49, 0.16);
+  border-radius: 50%;
+  color: #6f543f;
+  background: rgba(255, 251, 242, 0.9);
+  cursor: pointer;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 200ms ease, transform 200ms ease, visibility 200ms;
+}
+
+.speechToggle {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(111, 72, 49, 0.13);
+  border-radius: 50%;
+  color: #6f543f;
+  background: rgba(255, 251, 242, 0.88);
+  font-size: 12px;
+  cursor: pointer;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 200ms ease, transform 200ms ease, visibility 200ms;
+}
+
+.controlVisible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+}
+
+.speechBubble {
+  position: absolute;
+  right: 7px;
+  bottom: 100px;
+  width: max-content;
+  max-width: min(170px, calc(100vw - 34px));
+  padding: 8px 11px;
+  border: 1px solid rgba(104, 69, 45, 0.13);
+  border-radius: 15px 15px 3px 15px;
+  color: #4d4037;
+  background: #fffaf0;
+  box-shadow: 0 6px 18px rgba(48, 39, 31, 0.12);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 8;
+  animation: bubbleIn 200ms ease-out;
+}
+
+.speechBubble::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: #fffaf0;
+  transform: rotate(45deg);
+  box-shadow: 3px 3px 7px rgba(48, 39, 31, 0.04);
+}
+
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+
+.updateBubble {
+  position: absolute;
+  right: 4px;
+  bottom: 104px;
+  width: min(260px, calc(100vw - 32px));
+  padding: 13px 38px 12px 14px;
+  border: 1px solid rgba(104, 69, 45, 0.14);
+  border-radius: 16px 16px 4px 16px;
+  color: #31423c;
+  background: #fffaf0;
+  box-shadow: 0 14px 38px rgba(48, 39, 31, 0.18);
+  pointer-events: auto;
+}
+
+.updateBubble strong { display: block; font-size: 13px; line-height: 1.45; }
+.updateBubble > button:not(.dismissUpdate) { margin-top: 9px; padding: 7px 11px; border: 0; border-radius: 9px; color: #fff; background: #173d36; font-size: 12px; font-weight: 750; cursor: pointer; }
+.dismissUpdate { position: absolute; top: 6px; right: 7px; width: 28px; height: 28px; padding: 0; border: 0; color: #776a61; background: transparent; font-size: 20px; cursor: pointer; }
+
+.petButton {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  outline-offset: 2px;
+  background: transparent;
+  filter: drop-shadow(0 5px 7px rgba(64, 39, 27, 0.12));
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+.petButton:active { cursor: grabbing; }
+
+.sprite {
+  display: block;
+  width: 96px;
+  height: 104px;
+  object-fit: contain;
+  object-position: center bottom;
+  transform: translateZ(0);
+  user-select: none;
+}
+
+.collapsed {
+  position: fixed;
+  z-index: 7;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(111, 72, 49, 0.2);
+  border-radius: 50%;
+  background: rgba(255, 251, 242, 0.94);
+  box-shadow: 0 8px 22px rgba(51, 39, 30, 0.18);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.collapsed span {
+  width: 39px;
+  height: 42px;
+  display: block;
+  background-image: url("/pet/idle.png");
+  background-repeat: no-repeat;
+  background-size: 600% 100%;
+  background-position: 0 0;
+}
+
+@media (max-width: 680px) {
+  .widget {
+    right: max(22px, env(safe-area-inset-right));
+    bottom: max(96px, calc(env(safe-area-inset-bottom) + 76px));
+    /* Keep the sprite viewport equal to the scaled frame width. The strip is
+       rendered at 96px per frame; shrinking only the button to 82px clips
+       the transparent frame edges and makes the pig look cut off. */
+    width: 84px;
+    height: 91px;
+  }
+
+  .updateBubble { right: 0; bottom: 104px; }
+  .speechBubble { right: 2px; bottom: 88px; }
+
+  .sprite { width: 84px !important; height: 91px !important; }
+
+  .collapsed {
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sprite { transform: none; }
+  .speechBubble, .collapseControl, .speechToggle { animation: none; transition: none; }
+}
