@@ -74,27 +74,40 @@ export default function ReadingRoom({ section = "all" }: { section?: "all" | "li
   const [copied, setCopied] = useState<"endpoint" | string | null>(null);
   const [mcpOpen, setMcpOpen] = useState(false);
 
-  useEffect(() => {
-    Promise.all([
+  const loadLibrary = useCallback(() => {
+    setLoadingShelf(true);
+    setShelfError("");
+    window.dispatchEvent(new Event("reading-room:sync-start"));
+    return Promise.all([
       appFetch("/api/weread/shelf").then((response) => {
         if (!response.ok) throw new Error("书架暂时没有拉到");
-        return response.json() as Promise<ShelfData>;
+        return Promise.all([response.json() as Promise<ShelfData>, Promise.resolve(response.headers.get("X-Reading-Room-Cache") === "stale")]);
       }),
-      appFetch("/api/weread/notebooks").then((response) =>
-        response.ok ? response.json() as Promise<{ books?: Notebook[] }> : { books: [] as Notebook[] },
-      ),
+      appFetch("/api/weread/notebooks").then(async (response) => ({
+        data: response.ok ? await response.json() as { books?: Notebook[] } : { books: [] as Notebook[] },
+        stale: response.headers.get("X-Reading-Room-Cache") === "stale",
+      })),
     ])
-      .then(([shelfData, noteData]) => {
+      .then(([[shelfData, shelfStale], noteResult]) => {
         setShelf(shelfData);
-        setNotebooks(noteData.books ?? []);
+        setNotebooks(noteResult.data.books ?? []);
         const remembered = window.localStorage.getItem("reading-room:v1:last-book");
         setSelected(shelfData.books?.find((book: Book) => book.bookId === remembered) ?? shelfData.books?.[0] ?? null);
+        if (!shelfStale && !noteResult.stale) window.dispatchEvent(new Event("reading-room:sync-success"));
       })
-      .catch((error) =>
-        setShelfError(error instanceof Error ? error.message : "加载失败"),
-      )
+      .catch((error) => {
+        setShelfError(error instanceof Error ? error.message : "加载失败");
+        window.dispatchEvent(new CustomEvent("reading-room:sync-error", { detail: { message: error instanceof Error ? error.message : "同步失败，请重试" } }));
+      })
       .finally(() => setLoadingShelf(false));
   }, []);
+
+  useEffect(() => {
+    void loadLibrary();
+    const retry = () => { void loadLibrary(); };
+    window.addEventListener("reading-room:retry-sync", retry);
+    return () => window.removeEventListener("reading-room:retry-sync", retry);
+  }, [loadLibrary]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
