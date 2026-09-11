@@ -102,6 +102,12 @@ export default function ReadingNotebook({ books, bookId, onBookChange }: Props) 
   }, [bookId, books, onBookChange]);
 
   useEffect(() => {
+    const retry = () => setReloadToken((value) => value + 1);
+    window.addEventListener("reading-room:retry-sync", retry);
+    return () => window.removeEventListener("reading-room:retry-sync", retry);
+  }, []);
+
+  useEffect(() => {
     if (!bookId) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
@@ -113,9 +119,9 @@ export default function ReadingNotebook({ books, bookId, onBookChange }: Props) 
       .then(async (response) => {
         const data = await response.json() as NotesPayload & { error?: string };
         if (!response.ok) throw new Error(data.error || "笔记暂时没有同步好");
-        return data;
+        return { data, stale: response.headers.get("X-Reading-Room-Cache") === "stale" };
       })
-      .then((data) => {
+      .then(({ data, stale }) => {
         setPayload(data);
         rememberSyncedNotes(data.notes.map((note) => ({ id: `${data.book.bookId}:${note.id}`, createdAt: note.createdAt })));
         syncBookNotes({
@@ -123,12 +129,14 @@ export default function ReadingNotebook({ books, bookId, onBookChange }: Props) 
           highlights: data.highlights.map((item) => ({ ...item, createdAt: item.createdAt || "" })),
           notes: data.notes.map((item) => ({ ...item, createdAt: item.createdAt || "" })),
         });
-        window.dispatchEvent(new Event("reading-room:sync-success"));
+        if (!stale) window.dispatchEvent(new Event("reading-room:sync-success"));
       })
       .catch((reason) => {
         if (controller.signal.aborted) return;
-        setError(reason instanceof Error ? reason.message : "笔记暂时没有同步好");
+        const message = reason instanceof Error ? reason.message : "笔记暂时没有同步好";
+        setError(message);
         window.dispatchEvent(new Event("reading-room:data-error"));
+        window.dispatchEvent(new CustomEvent("reading-room:sync-error", { detail: { message } }));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
