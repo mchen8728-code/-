@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpen, ChevronRight, Clock3, LoaderCircle, MessageCircleHeart, NotebookPen } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { syncRecentBooks } from "@/lib/local-reading";
 import { appFetch } from "@/lib/platform";
 
@@ -38,8 +38,10 @@ export default function RecentReading({ onSelectBook, onOpenNotes, onTalk }: Pro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    appFetch("/api/weread/recent", { cache: "no-store" })
+  const loadRecent = useCallback(() => {
+    setLoading(true);
+    setError("");
+    return appFetch("/api/weread/recent", { cache: "no-store" })
       .then(async (response) => {
         const result = await response.json() as { books?: RecentBook[]; error?: string };
         if (!response.ok) throw new Error(result.error || "最近阅读暂时没有同步好");
@@ -56,6 +58,13 @@ export default function RecentReading({ onSelectBook, onOpenNotes, onTalk }: Pro
       .catch((reason) => setError(reason instanceof Error ? reason.message : "最近阅读暂时没有同步好"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    void loadRecent();
+    const retry = () => { void loadRecent(); };
+    window.addEventListener("reading-room:retry-sync", retry);
+    return () => window.removeEventListener("reading-room:retry-sync", retry);
+  }, [loadRecent]);
 
   return (
     <section className="recent-reading" aria-labelledby="recent-title">
