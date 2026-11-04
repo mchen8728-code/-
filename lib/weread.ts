@@ -1,5 +1,5 @@
 const WEREAD_GATEWAY = "https://i.weread.qq.com/api/agent/gateway";
-const SKILL_VERSION = "1.0.4";
+const SKILL_VERSION = "1.0.5";
 
 export type WeReadBook = {
   bookId: string;
