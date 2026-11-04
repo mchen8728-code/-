@@ -30,7 +30,7 @@ export async function GET() {
   const response = await fetch(gateway, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ api_name: "/shelf/sync", skill_version: "1.0.4" }),
+    body: JSON.stringify({ api_name: "/shelf/sync", skill_version: "1.0.5" }),
     cache: "no-store",
   });
   const data = await response.json() as ShelfResponse;
