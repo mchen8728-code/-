@@ -1,5 +1,6 @@
+import { getWeReadKey } from "./weread-key";
 const WEREAD_GATEWAY = "https://i.weread.qq.com/api/agent/gateway";
-const SKILL_VERSION = "1.0.5";
+export const SKILL_VERSION = "1.0.6";
 
 export type WeReadBook = {
   bookId: string;
@@ -49,30 +50,60 @@ export type WeReadHighlight = {
   colorStyle?: number;
 };
 
+export class WeReadApiError extends Error {
+  constructor(public code: "auth" | "timeout" | "network" | "upstream" | "missing_key" | "invalid_response", message: string, public upstreamStatus?: number, public upstreamCode?: string) {
+    super(message);
+    this.name = "WeReadApiError";
+  }
+}
+
+export function connectionFailure(error: unknown) {
+  if (error instanceof WeReadApiError) {
+    return { error: error.message, code: error.code, upstreamStatus: error.upstreamStatus, upstreamCode: error.upstreamCode };
+  }
+  return { error: "小屋暂时无法完成连接，请稍后重试。", code: "internal" };
+}
+
 export async function wereadApi<T>(
   apiName: string,
   params: Record<string, unknown> = {},
+  keyOverride?: string,
 ): Promise<T> {
-  const apiKey = process.env.WEREAD_API_KEY;
-  if (!apiKey) throw new Error("WEREAD_API_KEY is not configured");
-
-  const response = await fetch(WEREAD_GATEWAY, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ api_name: apiName, ...params, skill_version: SKILL_VERSION }),
-    cache: "no-store",
-  });
-  const data = await response.json() as Record<string, unknown>;
-  if (!response.ok || (typeof data.errcode === "number" && data.errcode !== 0)) {
-    throw new Error(String(data.errmsg || `WeRead request failed: ${apiName}`));
+  const apiKey = keyOverride || await getWeReadKey();
+  if (!apiKey) throw new WeReadApiError("missing_key", "尚未配置微信读书 API Key，请重新接入。");
+  let response: Response;
+  try {
+    response = await fetch(WEREAD_GATEWAY, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ api_name: apiName, ...params, skill_version: SKILL_VERSION }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    const timeout = error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name);
+    throw new WeReadApiError(timeout ? "timeout" : "network", timeout
+      ? "连接微信读书超时，请稍后重试。"
+      : "小屋服务器暂时无法访问微信读书，请稍后重试。");
   }
-  if (data.upgrade_info) {
-    const upgrade = data.upgrade_info as { message?: string };
-    throw new Error(upgrade.message || "WeRead skill upgrade required");
+  let data: Record<string, unknown>;
+  try {
+    const parsed: unknown = await response.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    data = parsed as Record<string, unknown>;
+  } catch {
+    throw new WeReadApiError("invalid_response", "微信读书返回了异常响应，请稍后重试。", response.status);
   }
+  const errcode = data.errcode;
+  if (!response.ok || (errcode !== undefined && String(errcode) !== "0")) {
+    const upstreamCode = typeof errcode === "number" || typeof errcode === "string" && /^-?\d{1,12}$/.test(errcode) ? String(errcode) : undefined;
+    const auth = response.status === 401 || response.status === 403
+      || /鉴权|授权|凭证|密钥|api.?key|token|unauthori[sz]ed|authentication/i.test(String(data.errmsg || ""));
+    throw new WeReadApiError(auth ? "auth" : "upstream", auth
+      ? "微信读书拒绝了此 API Key（鉴权失败）。请从官方页面重新获取并复制完整 Key。"
+      : "微信读书暂时无法处理请求，请稍后重试。", response.status, upstreamCode);
+  }
+  // upgrade_info is advisory; successful business data must remain usable.
   return data as T;
 }
 

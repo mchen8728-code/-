@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import WeReadConnection from "@/components/WeReadConnection";
 
 export const metadata: Metadata = {
   title: "璟璟的共读小屋",
@@ -42,7 +43,7 @@ export default function RootLayout({
         <link rel="manifest" href="/app.webmanifest" crossOrigin="use-credentials" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased"><WeReadConnection />{children}</body>
     </html>
   );
 }

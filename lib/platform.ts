@@ -1,4 +1,4 @@
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
 
 const NATIVE_API_ORIGIN = "https://jingjing-weread-room.mchen8728.chatgpt.site";
 const apiCachePrefix = "reading-room:v1:api-cache:";
@@ -13,6 +13,23 @@ export function apiUrl(path: string) {
     : path;
 }
 
+// The native HTTP bridge shares Android's cookie jar and can reach the hosted API
+// without routing a request to the bundled https://localhost origin.
+export async function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  if (!isNativeApp()) return fetch(input, init);
+  const url = apiUrl(input);
+  const headers = Object.fromEntries(new Headers(init.headers).entries());
+  headers.Origin = new URL(url).origin;
+  const response = await CapacitorHttp.request({
+    url, method: init.method || "GET", headers,
+    ...(typeof init.body === "string" ? { data: init.body } : {}),
+    connectTimeout: 12_000, readTimeout: 12_000, responseType: "text",
+  });
+  return new Response(typeof response.data === "string" ? response.data : JSON.stringify(response.data), {
+    status: response.status, headers: response.headers,
+  });
+}
+
 export async function appFetch(input: string, init: RequestInit = {}) {
   const cacheable = input.startsWith("/api/weread/") && (!init.method || init.method === "GET");
   const cacheKey = `${apiCachePrefix}${input}`;
@@ -23,7 +40,7 @@ export async function appFetch(input: string, init: RequestInit = {}) {
   init.signal?.addEventListener("abort", abort, { once: true });
 
   try {
-    const response = await fetch(requestUrl, { ...init, signal: controller.signal });
+    const response = await apiFetch(requestUrl, { ...init, signal: controller.signal });
     const contentType = response.headers.get("content-type") ?? "";
     if (cacheable && response.ok && !contentType.includes("application/json")) {
       throw new Error(`同步接口返回了非 JSON 内容 (${contentType || "unknown"})`);

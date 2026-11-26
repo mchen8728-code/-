@@ -25,3 +25,11 @@ APK 输出在 `android/app/build/outputs/apk/debug/app-debug.apk`。也可以运
 ## Release 签名（真机 Debug 验收后再做）
 
 不要提交 keystore、密码或 `android/keystore.properties`。本地创建 keystore 后，将路径与密码保存在本机环境变量或未跟踪的 Gradle 配置中，再执行 `npm run android:release`。仓库已忽略 `*.jks`、`*.keystore` 和 `android/keystore.properties`。
+
+## Android 1.1.0
+
+APK 内含刷新、重联、重新接入微信读书窗口。API Key 通过 HTTPS 发送到小屋服务器验证，验证成功后的凭据保存在 Android HTTP Cookie 存储中，不会编译进安装包或提交到仓库。
+
+推送相关代码到 main 后，GitHub Actions 会构建 APK 并上传到仓库 Releases，同时附带 SHA256SUMS.txt；也可手动运行 Build Android APK。下载 Releases 中的 jingjing-reading-room-1.1.0.apk 安装即可。
+
+构建优先使用既有 ANDROID_KEYSTORE_* 仓库密钥；未配置时使用调试签名并缓存签名文件。覆盖安装需要与旧版本的签名一致。

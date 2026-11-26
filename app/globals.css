@@ -760,3 +760,22 @@ button, a { -webkit-tap-highlight-color: transparent; }
   white-space: nowrap;
   pointer-events: none;
 }
+
+.weread-connection { position: relative; z-index: 30; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; padding: 12px max(16px, env(safe-area-inset-right)); border-bottom: 1px solid #d8d9cf; background: #f7f7f1; color: #394d43; font-size: .875rem; }
+.weread-state { flex: 1; font-weight: 600; }
+.weread-state.is-offline { color: #94512d; }
+.weread-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.weread-actions button, .weread-dialog button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 12px; border: 1px solid #c8d1c8; border-radius: 12px; background: #fff; color: #394d43; font: inherit; cursor: pointer; }
+.weread-connection > p { flex-basis: 100%; margin: 0; line-height: 1.5; }
+.weread-dialog { width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; margin: auto; padding: 24px; border: 1px solid #c8d1c8; border-radius: 22px; background: #fafaf5; color: #394d43; box-shadow: 0 20px 80px #243d4333; font-size: 1rem; }
+.weread-dialog::backdrop { background: #25332d88; }
+.weread-dialog header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.weread-dialog h2 { font-size: 1.25rem; margin: 0; }
+.weread-dialog p { line-height: 1.7; margin: 16px 0; }
+.weread-dialog label { display: block; margin-bottom: 8px; font-weight: 600; }
+.weread-dialog input { width: 100%; padding: 12px; border: 1px solid #b5c2b7; border-radius: 10px; background: white; color: #263f32; font-size: 1rem; }
+.weread-dialog .weread-key-hint { font-size: .875rem; color: #5b695f; }
+.weread-dialog .weread-connect-error { color: #a03c32; }
+.weread-dialog .weread-connect-submit { width: 100%; background: #3b6250; color: white; }
+.weread-dialog button:disabled, .weread-actions button:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 520px) { .weread-connection { gap: 8px; } .weread-state { flex-basis: 100%; } .weread-actions { width: 100%; } .weread-actions button { flex: 1; } }

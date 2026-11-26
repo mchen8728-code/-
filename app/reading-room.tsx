@@ -178,7 +178,7 @@ export default function ReadingRoom({ section = "all" }: { section?: "all" | "li
         </div>
         <div className="topbar-status">
           <PwaInstallButton />
-          <span className="status-pill is-online"><i />微信读书已连接</span>
+          
           <span className="status-pill is-online"><i />MCP · 6 个只读工具</span>
         </div>
       </header>

@@ -1,3 +1,4 @@
+import { wereadApi, connectionFailure } from "@/lib/weread";
 import { NextResponse } from "next/server";
 
 type NotebookItem = {
@@ -18,16 +19,8 @@ type NotebookResponse = {
 };
 
 export async function GET() {
-  const apiKey = process.env.WEREAD_API_KEY;
-  if (!apiKey) return NextResponse.json({ books: [] }, { status: 503 });
-  const response = await fetch("https://i.weread.qq.com/api/agent/gateway", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ api_name: "/user/notebooks", count: 100, skill_version: "1.0.4" }),
-    cache: "no-store",
-  });
-  const data = await response.json() as NotebookResponse;
-  if (!response.ok || data.errcode || data.upgrade_info) return NextResponse.json({ books: [] });
+  try {
+  const data = await wereadApi<NotebookResponse>("/user/notebooks", { count: 100 });
   const books = (Array.isArray(data.books) ? data.books : []).map((item) => ({
     bookId: String(item.bookId),
     title: item.book?.title ?? "未命名",
@@ -36,4 +29,7 @@ export async function GET() {
     readingProgress: item.readingProgress ?? 0,
   }));
   return NextResponse.json({ books, totalBookCount: data.totalBookCount, totalNoteCount: data.totalNoteCount });
+  } catch (error) {
+    return NextResponse.json({ ...connectionFailure(error), books: [] }, { status: 502 });
+  }
 }

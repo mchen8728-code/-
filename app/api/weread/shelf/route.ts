@@ -1,6 +1,6 @@
+import { wereadApi, connectionFailure } from "@/lib/weread";
 import { NextResponse } from "next/server";
 
-const gateway = "https://i.weread.qq.com/api/agent/gateway";
 
 type ShelfBook = {
   bookId: string | number;
@@ -24,22 +24,8 @@ type ShelfResponse = {
 };
 
 export async function GET() {
-  const apiKey = process.env.WEREAD_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "微信读书尚未连接" }, { status: 503 });
-
-  const response = await fetch(gateway, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ api_name: "/shelf/sync", skill_version: "1.0.5" }),
-    cache: "no-store",
-  });
-  const data = await response.json() as ShelfResponse;
-  if (!response.ok || data.errcode) {
-    return NextResponse.json({ error: data.errmsg || "书架信息暂时没拉到" }, { status: 502 });
-  }
-  if (data.upgrade_info) {
-    return NextResponse.json({ error: data.upgrade_info.message || "微信读书接口需要升级" }, { status: 503 });
-  }
+  try {
+  const data = await wereadApi<ShelfResponse>("/shelf/sync");
 
   const books = Array.isArray(data.books) ? data.books : [];
   const albums = Array.isArray(data.albums) ? data.albums : [];
@@ -66,4 +52,7 @@ export async function GET() {
     publicCount,
     privateCount,
   });
+  } catch (error) {
+    return NextResponse.json(connectionFailure(error), { status: 502 });
+  }
 }

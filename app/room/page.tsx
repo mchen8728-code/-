@@ -61,6 +61,13 @@ export default function RoomPage() {
   const [recent, setRecent] = useState<Array<{ bookId: string; title: string; chapterTitle: string | null; progress: number }>>([]);
   const [notes, setNotes] = useState<Array<{ bookId: string; title: string; totalNotes: number; readingProgress: number }>>([]);
   const [panelLoading, setPanelLoading] = useState(false);
+  const [panelError, setPanelError] = useState("");
+  const [syncRevision, setSyncRevision] = useState(0);
+  useEffect(() => {
+    const retry = () => setSyncRevision((value) => value + 1);
+    window.addEventListener("reading-room:retry-sync", retry);
+    return () => window.removeEventListener("reading-room:retry-sync", retry);
+  }, []);
 
   const openPanel = (next: "recent" | "notes") => {
     setPanelLoading(true);
@@ -69,6 +76,9 @@ export default function RoomPage() {
 
   useEffect(() => {
     if (!panel) return;
+    let active = true;
+    setPanelLoading(true);
+    setPanelError("");
     const endpoint = panel === "recent" ? "/api/weread/recent" : "/api/weread/notebooks";
     appFetch(endpoint, { cache: "no-store" })
       .then((response) => {
@@ -76,12 +86,14 @@ export default function RoomPage() {
         return response.json() as Promise<{ books?: Array<{ bookId: string; title: string; chapterTitle?: string | null; progress?: number; totalNotes?: number; readingProgress?: number }> }>;
       })
       .then((data) => {
+        if (!active) return;
         if (panel === "recent") setRecent((data.books ?? []).map((book) => ({ bookId: book.bookId, title: book.title, chapterTitle: book.chapterTitle ?? null, progress: book.progress ?? 0 })));
         else setNotes((data.books ?? []).map((book) => ({ bookId: book.bookId, title: book.title, totalNotes: book.totalNotes ?? 0, readingProgress: book.readingProgress ?? 0 })));
       })
-      .catch(() => { if (panel === "recent") setRecent([]); else setNotes([]); })
-      .finally(() => setPanelLoading(false));
-  }, [panel]);
+      .catch(() => { if (active) setPanelError("暂时无法同步，请使用上方的刷新或重联。此前的记录已保留。"); })
+      .finally(() => { if (active) setPanelLoading(false); });
+    return () => { active = false; };
+  }, [panel, syncRevision]);
 
   const movePet = (anchor: PetAnchor) => {
     window.dispatchEvent(new CustomEvent("reading-room:pet-anchor", { detail: { anchor } }));
@@ -119,7 +131,7 @@ export default function RoomPage() {
 
       <section className="room-controls" aria-label="小屋场景锚点"><div><span className="eyebrow">PET ANCHORS</span><h2>把阿砚拎到房间里</h2></div><div className="anchor-list">{anchors.map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => movePet(id)}><Icon size={16} />{label}</button>)}</div></section>
 
-      {panel && <div className="room-panel-backdrop" role="presentation" onClick={() => setPanel(null)}><section className="room-panel" role="dialog" aria-modal="true" aria-labelledby="room-panel-title" onClick={(event) => event.stopPropagation()}><header><div><span className="eyebrow">{panel === "recent" ? "RECENT READING" : "MY NOTES"}</span><h2 id="room-panel-title">{panel === "recent" ? "最近在看" : "我的笔记"}</h2></div><button type="button" onClick={() => setPanel(null)} aria-label="关闭"><X size={18} /></button></header>{panelLoading && <p className="room-panel-empty">阿砚正在翻找……</p>}{!panelLoading && panel === "recent" && (recent.length ? recent.map((book) => <button className="room-book-row" key={book.bookId} type="button" onClick={() => { window.localStorage.setItem("reading-room:v1:last-book", book.bookId); window.location.href = "/"; }}><span><strong>《{book.title}》</strong><small>{book.chapterTitle || "最近章节暂缺"}</small></span><b>{book.progress}%</b></button>) : <p className="room-panel-empty">微信读书暂时没有返回最近阅读记录。</p>)}{!panelLoading && panel === "notes" && (notes.length ? notes.map((book) => <button className="room-book-row" key={book.bookId} type="button" onClick={() => { window.localStorage.setItem("reading-room:v1:last-book", book.bookId); window.location.href = "/#my-notes"; }}><span><strong>《{book.title}》</strong><small>{book.totalNotes} 条笔记</small></span><b>{book.readingProgress}%</b></button>) : <p className="room-panel-empty">暂时没有可同步的笔记。</p>)}</section></div>}
+      {panel && <div className="room-panel-backdrop" role="presentation" onClick={() => setPanel(null)}><section className="room-panel" role="dialog" aria-modal="true" aria-labelledby="room-panel-title" onClick={(event) => event.stopPropagation()}><header><div><span className="eyebrow">{panel === "recent" ? "RECENT READING" : "MY NOTES"}</span><h2 id="room-panel-title">{panel === "recent" ? "最近在看" : "我的笔记"}</h2></div><button type="button" onClick={() => setPanel(null)} aria-label="关闭"><X size={18} /></button></header>{panelLoading && <p className="room-panel-empty">阿砚正在翻找……</p>}{panelError && <p className="room-panel-empty" role="alert">{panelError}</p>}{!panelLoading && !panelError && panel === "recent" && (recent.length ? recent.map((book) => <button className="room-book-row" key={book.bookId} type="button" onClick={() => { window.localStorage.setItem("reading-room:v1:last-book", book.bookId); window.location.href = "/"; }}><span><strong>《{book.title}》</strong><small>{book.chapterTitle || "最近章节暂缺"}</small></span><b>{book.progress}%</b></button>) : <p className="room-panel-empty">微信读书暂时没有返回最近阅读记录。</p>)}{!panelLoading && !panelError && panel === "notes" && (notes.length ? notes.map((book) => <button className="room-book-row" key={book.bookId} type="button" onClick={() => { window.localStorage.setItem("reading-room:v1:last-book", book.bookId); window.location.href = "/#my-notes"; }}><span><strong>《{book.title}》</strong><small>{book.totalNotes} 条笔记</small></span><b>{book.readingProgress}%</b></button>) : <p className="room-panel-empty">暂时没有可同步的笔记。</p>)}</section></div>}
       {nestOpen && <div className="room-panel-backdrop" onClick={() => setNestOpen(false)} role="presentation"><section className="room-panel nest-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true"><header><div><span className="eyebrow">PET NEST</span><h2>阿砚的窝</h2></div><button type="button" onClick={() => setNestOpen(false)}><X size={18}/></button></header><p className="nest-status">现在状态：<strong>{petState}</strong></p><button className="nest-action" type="button" onClick={() => window.dispatchEvent(new Event("reading-room:pet-speak"))}>🐷 戳戳阿砚</button><button className="nest-action" type="button" onClick={() => window.dispatchEvent(new CustomEvent("reading-room:pet-set-state", {detail:{state: petState === "sleeping" ? "idle" : "sleeping"}}))}>{petState === "sleeping" ? "☀️ 叫醒阿砚" : "🌙 让阿砚睡觉"}</button><div className="nest-action-grid" aria-label="阿砚的新动作">{petNestActions.map((action) => <button key={action.state} type="button" onClick={() => window.dispatchEvent(new CustomEvent("reading-room:pet-set-state", { detail: { state: action.state } }))}>{action.label}</button>)}</div><label className="nest-toggle"><input type="checkbox" defaultChecked onChange={(e) => window.localStorage.setItem("reading-room:v1:pet-speech", String(e.target.checked))}/> 主动搭话</label><div className="nest-junk"><span>阿砚的小破烂</span><small>几张书签、旧便签和一枚小印章（预留区域）</small></div></section></div>}
       {littleThingsOpen && <div className="room-panel-backdrop little-things-backdrop" onClick={closeLittleThings} role="presentation"><section className="room-panel little-things-sheet" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="little-things-title"><header><div><span className="eyebrow">LITTLE THINGS</span><h2 id="little-things-title">璟璟的小破烂</h2><p>一些舍不得扔掉的东西。</p></div><button type="button" onClick={closeLittleThings} aria-label="关闭"><X size={18}/></button></header><nav className="little-things-links" aria-label="留下来的东西"><a href="/bookplates"><TicketCheck size={17}/><span><strong>藏书票</strong><small>读完一本书留下的纪念</small></span></a><a href="/aftertaste"><BookHeart size={17}/><span><strong>书后余味</strong><small>读完以后，还留在心里的话</small></span></a><a href="/relations"><Link2 size={17}/><span><strong>关系卡</strong><small>书与书之间的小线索</small></span></a></nav><button className="pull-old-thing" type="button" onClick={pullOldThing}><RefreshCw size={16}/>翻一件旧东西</button>{oldThing ? <article className="little-thing-result"><span>从袋子里摸出来了——</span><small>{oldThing.kind} · 《{oldThing.bookTitle}》</small><blockquote>{oldThing.text}</blockquote></article> : <p className="little-things-empty">{oldThingTried ? "袋子今天空空的。" : "伸手进去摸摸看。"}</p>}</section></div>}
 
